@@ -11,43 +11,45 @@ namespace ScannerA
 {
     class Program
     {
+        // Pagrindinis ScannerA metodas
         static void Main(string[] args)
         {
-            Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)0x1; // CPU branduolys
+            // Priskiriame šiam agentui konkretų CPU branduolį
+            Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)0x1;
 
-            string kelias = args.Length > 0 ? args[0] : AppDomain.CurrentDomain.BaseDirectory;
-            Console.WriteLine($" Skaitymo aplankas: {kelias}");
+            // Nustatome katalogą, jei nepateiktas – naudojame programos aplanką
+            string katalogas = args.Length > 0 ? args[0] : AppDomain.CurrentDomain.BaseDirectory;
+            Console.WriteLine($" Skaitymo aplankas: {katalogas}");
 
+            // Naudojame vamzdžio pavadinimą "kanalasA"
             string vamzdzioPavadinimas = "kanalasA";
-            Thread darba = new Thread(() => ApdorokIrPerduok(kelias, vamzdzioPavadinimas));
-            darba.Start();
+
+            // Paleidžiame žodžių analizę ir siuntimą atskiroje gijoje
+            Thread analizavimoGija = new Thread(() => ApdorokIrPerduok(katalogas, vamzdzioPavadinimas));
+            analizavimoGija.Start();
         }
 
         static void ApdorokIrPerduok(string kelias, string vamzdis)
         {
-            List<FailoZodis> rezultatai = new();
+            var rezultatai = new List<FailoZodis>();
 
             foreach (var failas in Directory.GetFiles(kelias, "*.txt"))
             {
-                string turinys = File.ReadAllText(failas);
-                var zodziai = turinys.Split(new[] { ' ', '\n', '\r', '.', ',', '!', '?', '-', ';' }, StringSplitOptions.RemoveEmptyEntries);
+                var tekstas = File.ReadAllText(failas);
+                var zodziai = tekstas.Split(' ', '\n', '\r', '.', ',', ';', ':', '-', '!', '?');
 
-                Dictionary<string, int> zodziuSk = new();
-                foreach (var z in zodziai)
-                {
-                    string apdorotas = z.ToLower();
-                    if (!zodziuSk.ContainsKey(apdorotas))
-                        zodziuSk[apdorotas] = 0;
-                    zodziuSk[apdorotas]++;
-                }
+                var grupes = zodziai
+                    .Where(z => !string.IsNullOrWhiteSpace(z))
+                    .GroupBy(z => z)
+                    .ToDictionary(gr => gr.Key, gr => gr.Count());
 
-                foreach (var entry in zodziuSk)
+                foreach (var item in grupes)
                 {
                     rezultatai.Add(new FailoZodis
                     {
-                        FailoPavadinimas = Path.GetFileName(failas),
-                        Zodis = entry.Key,
-                        Kiekis = entry.Value
+                        Zodis = item.Key,
+                        Kiekis = item.Value,
+                        FailoPavadinimas = Path.GetFileName(failas)
                     });
                 }
             }
@@ -56,10 +58,7 @@ namespace ScannerA
             kanalas.Connect();
 
             using var rasytojas = new StreamWriter(kanalas) { AutoFlush = true };
-            foreach (var zodis in rezultatai)
-                rasytojas.WriteLine(zodis.ToString());
-
-            Console.WriteLine(" ScannerA baigė siųsti duomenis.");
+            rasytojas.Write(FailoZodis.ToString(rezultatai));
         }
     }
 }

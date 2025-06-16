@@ -1,28 +1,53 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace BendrasModelis // Galima naudoti bendrą namespace, jei nori bendros klasės
+namespace BendrasModelis
 {
-    [Serializable]
+    // Klasė aprašo vieno žodžio įrašą: žodį, kiekį ir failo pavadinimą
     public class FailoZodis
     {
-        public string FailoPavadinimas { get; set; }
-        public string Zodis { get; set; }
+        // Žodžio dažnis (kiek kartų pasikartojo)
         public int Kiekis { get; set; }
 
-        public override string ToString()
+        // Pats žodis
+        public string Zodis { get; set; }
+
+        // Iš kurio failo šis žodis rastas
+        public string FailoPavadinimas { get; set; }
+
+        // Konvertuoja sąrašą žodžių į vieną teksto eilutę 
+        public static string ToString(List<FailoZodis> zodziai)
         {
-            return $"{FailoPavadinimas}|{Zodis}|{Kiekis}";
+            // Naudojame '|' kaip atskyrimo ženklą, eilutės atskiriamos '\n'
+            return string.Join("\n", zodziai.Select(z => $"{z.FailoPavadinimas}|{z.Zodis}|{z.Kiekis}"));
         }
 
-        public static FailoZodis IsEilutes(string eilute)
+        // Sukuria žodžių sąrašą iš teksto eilutės 
+        public static List<FailoZodis> IsEilutes(string eilute)
         {
-            var dalys = eilute.Split('|');
-            return new FailoZodis
+            var zodziai = new List<FailoZodis>();
+
+            foreach (var eil in eilute.Split('\n'))
             {
-                FailoPavadinimas = dalys[0],
-                Zodis = dalys[1],
-                Kiekis = int.Parse(dalys[2])
-            };
+                var dalys = eil.Split('|');
+                if (dalys.Length != 3) continue;
+
+                zodziai.Add(new FailoZodis
+                {
+                    FailoPavadinimas = dalys[0],
+                    Zodis = dalys[1],
+                    Kiekis = int.TryParse(dalys[2], out int k) ? k : 0
+                });
+            }
+
+            return zodziai;
+        }
+
+        // Gražina suprantamą žodžio aprašymą
+        public override string ToString()
+        {
+            return $"Failas: {FailoPavadinimas}, Žodis: {Zodis}, Kiekis: {Kiekis}";
         }
     }
 }

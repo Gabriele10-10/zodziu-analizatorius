@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Pipes;
 using System.Threading;
 using System.Diagnostics;
@@ -10,15 +9,18 @@ namespace Valdiklis
 {
     class Program
     {
-        static Dictionary<string, Dictionary<string, int>> BendrasZodziuZemelapis = new();
-
         static void Main()
         {
+            // Priskiriame Master procesui konkretų CPU branduolį
             Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)0x4;
 
-            Console.WriteLine(" Valdiklis pasiruošęs. Laukia agentų...");
+            // Informuojame, kad Master laukia prisijungimų
+            Console.WriteLine(" Valdiklis pasiruošes. Laukia agentu...");
 
+            // Paleidžiame pirmą giją agentui A
             Thread gija1 = new Thread(() => GautiZodziusIs("kanalasA"));
+
+            // Paleidžiame antrą giją agentui B
             Thread gija2 = new Thread(() => GautiZodziusIs("kanalasB"));
 
             gija1.Start();
@@ -26,37 +28,19 @@ namespace Valdiklis
 
             gija1.Join();
             gija2.Join();
-
-            Console.WriteLine("\n Galutinis žodžių sąrašas:");
-            foreach (var failas in BendrasZodziuZemelapis)
-                foreach (var zodis in failas.Value)
-                    Console.WriteLine($"{failas.Key}:{zodis.Key}:{zodis.Value}");
         }
 
         static void GautiZodziusIs(string vamzdzioPav)
         {
-            using var serveris = new NamedPipeServerStream(vamzdzioPav, PipeDirection.In);
+            using var serveris = new NamedPipeServerStream(vamzdzioPav);
             serveris.WaitForConnection();
-            Console.WriteLine($" Prisijungė: {vamzdzioPav}");
 
             using var skaitytojas = new StreamReader(serveris);
-            while (!skaitytojas.EndOfStream)
-            {
-                var eilute = skaitytojas.ReadLine();
-                if (string.IsNullOrWhiteSpace(eilute)) continue;
+            var eilute = skaitytojas.ReadToEnd();
 
-                var objektas = FailoZodis.IsEilutes(eilute);
-                lock (BendrasZodziuZemelapis)
-                {
-                    if (!BendrasZodziuZemelapis.ContainsKey(objektas.FailoPavadinimas))
-                        BendrasZodziuZemelapis[objektas.FailoPavadinimas] = new();
-
-                    if (!BendrasZodziuZemelapis[objektas.FailoPavadinimas].ContainsKey(objektas.Zodis))
-                        BendrasZodziuZemelapis[objektas.FailoPavadinimas][objektas.Zodis] = 0;
-
-                    BendrasZodziuZemelapis[objektas.FailoPavadinimas][objektas.Zodis] += objektas.Kiekis;
-                }
-            }
+            var zodziai = FailoZodis.IsEilutes(eilute);
+            foreach (var z in zodziai)
+                Console.WriteLine(z);
         }
     }
 }

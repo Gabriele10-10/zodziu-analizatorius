@@ -1,0 +1,14 @@
+# Visual Studio aplankai
+.vs/
+bin/
+obj/
+
+# Sisteminiai failai
+*.user
+*.suo
+*.vsidx
+*.log
+
+# IDE cache
+*.cache
+*.db
